@@ -22,6 +22,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/spf13/afero"
+	"github.com/bitkarrot/higher/keyderivation"
 )
 
 type Config struct {
@@ -42,6 +43,11 @@ type Config struct {
 	WebsocketURL     *string
 	AllowedKinds     []int
 	MaxUploadSizeMB  int
+	// Key derivation / access control
+	RelayMnemonic     *string
+	RelaySeedHex      *string
+	MaxDerivationIndex int
+	ReadsRestricted    bool
 }
 
 type NostrData struct {
@@ -54,10 +60,28 @@ var relay *khatru.Relay
 var db DBBackend
 var fs afero.Fs
 var config Config
+var deriver *keyderivation.NostrKeyDeriver
 
 func main() {
 	relay = khatru.NewRelay()
-	config := LoadConfig()
+	config = LoadConfig()
+
+	// Initialize key deriver if configured
+	if err := initDeriver(config); err != nil {
+		log.Fatalf("Failed to initialize key deriver: %v", err)
+	}
+
+	// Startup status log
+	if deriver != nil {
+		log.Printf("Access control: deriver ACTIVE (BIP32), MaxDerivationIndex=%d", config.MaxDerivationIndex)
+	} else {
+		log.Printf("Access control: deriver INACTIVE")
+	}
+	if config.ReadsRestricted {
+		log.Printf("Reads restriction: ENABLED (queries must specify authors derived from master)")
+	} else {
+		log.Printf("Reads restriction: DISABLED")
+	}
 
 	relay.StoreEvent = append(relay.StoreEvent, db.SaveEvent)
 	relay.QueryEvents = append(relay.QueryEvents, db.QueryEvents)
@@ -74,8 +98,17 @@ func main() {
 	}
 
 	relay.RejectEvent = append(relay.RejectEvent, func(ctx context.Context, event *nostr.Event) (reject bool, msg string) {
-		// If TEAM_DOMAIN is set, enforce team membership; otherwise, skip this check
-		if config.TeamDomain != "" {
+		// If we have a deriver and the event pubkey belongs to master, allow writes (subject to allowed kinds)
+		belongsToMaster := false
+		if deriver != nil {
+			b, _, err := deriver.CheckKeyBelongsToMaster(event.PubKey, uint32(config.MaxDerivationIndex), true)
+			if err != nil {
+				log.Printf("Error checking key against master: %v", err)
+			}
+			belongsToMaster = b
+		}
+		// If TEAM_DOMAIN is set and the key does NOT belong to master, enforce team membership; otherwise, skip this check
+		if config.TeamDomain != "" && !belongsToMaster {
 			// Check if user is part of the team
 			isTeamMember := false
 			for _, pubkey := range data.Names {
@@ -105,6 +138,31 @@ func main() {
 
 		return false, "" // allow
 	})
+
+	// Optionally restrict reads: only allow filters that target authors derived from master
+	if config.ReadsRestricted {
+		relay.RejectFilter = append(relay.RejectFilter, func(ctx context.Context, filter nostr.Filter) (bool, string) {
+			if deriver == nil {
+				// If we cannot validate, reject by default when reads are restricted
+				return true, "reads are restricted but key deriver is not configured"
+			}
+			// If authors are provided, ensure all are descendants of master
+			if len(filter.Authors) > 0 {
+				for _, a := range filter.Authors {
+					belongs, _, err := deriver.CheckKeyBelongsToMaster(a, uint32(config.MaxDerivationIndex), true)
+					if err != nil {
+						return true, fmt.Sprintf("error validating author: %v", err)
+					}
+					if !belongs {
+						return true, "author not allowed by read restrictions"
+					}
+				}
+				return false, ""
+			}
+			// If no authors specified, disallow broad reads under restriction
+			return true, "reads restricted: specify allowed authors"
+		})
+	}
 
 	// Setup front page handler
 	setupFrontPageHandler(relay, config)
@@ -435,7 +493,7 @@ func LoadConfig() Config {
 		log.Fatalf("Error loading .env file")
 	}
 
-	config = Config{
+	config := Config{
 		RelayName:        getEnv("RELAY_NAME"),
 		RelayPubkey:      getEnv("RELAY_PUBKEY"),
 		RelayDescription: getEnv("RELAY_DESCRIPTION"),
@@ -453,6 +511,17 @@ func LoadConfig() Config {
 		WebsocketURL:     getEnvNullable("WEBSOCKET_URL"),
 		AllowedKinds:     parseAllowedKinds(getEnvNullable("ALLOWED_KINDS")),
 		MaxUploadSizeMB:  getEnvIntWithDefault("MAX_UPLOAD_SIZE_MB", 200),
+		RelayMnemonic:     getEnvNullable("RELAY_MNEMONIC"),
+		RelaySeedHex:      getEnvNullable("RELAY_SEED_HEX"),
+		MaxDerivationIndex: getEnvIntWithDefault("MAX_DERIVATION_INDEX", 100),
+		ReadsRestricted:    getEnvBool("READS_RESTRICTED"),
+	}
+
+	// Enforce exactly one of RELAY_MNEMONIC or RELAY_SEED_HEX must be set
+	hasMnemonic := config.RelayMnemonic != nil && strings.TrimSpace(*config.RelayMnemonic) != ""
+	hasSeed := config.RelaySeedHex != nil && strings.TrimSpace(*config.RelaySeedHex) != ""
+	if hasMnemonic == hasSeed { // either both true or both false
+		log.Fatalf("Configuration error: you must set exactly one of RELAY_MNEMONIC or RELAY_SEED_HEX")
 	}
 
 	relay.Info.Name = config.RelayName
