@@ -45,6 +45,35 @@ go build -o key-derivation ./examples/keyderivation
 
 By default, the example generates a fresh 12-word BIP-39 mnemonic on each run and derives keys from it. The generated mnemonic is printed at the top of the output so you can save/reuse it.
 
+## CLI Usage and Flags
+
+The example now supports flags so you don't have to edit code to supply inputs:
+
+- `--mnemonic` — Provide a BIP-39 mnemonic directly.
+- `--mnemonic-file` — Path to a file containing a BIP-39 mnemonic (one line).
+- `--start` — Start index for derivation (default: 0).
+- `--count` — Number of keys to derive with BIP32 (default: 3).
+- `--simple-count` — Number of keys to derive with the simple HMAC method (default: 2).
+- `--check-max` — Max index to scan when checking key ownership (default: 100).
+- `--event-index` — Index used to sign the sample Nostr event (default: 0).
+
+Examples:
+
+```bash
+# Run with a specific mnemonic string
+go run ./examples/keyderivation \
+  --mnemonic "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about" \
+  --start 0 --count 5 --simple-count 2 --check-max 200 --event-index 0
+
+# Run with a mnemonic from a file
+echo "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about" > /tmp/m.txt
+go run ./examples/keyderivation --mnemonic-file /tmp/m.txt --count 4
+
+# Build then run with flags
+go build -o key-derivation ./examples/keyderivation
+./key-derivation --count 10 --simple-count 3
+```
+
 ## What You’ll See
 
 The program walks through five steps:
@@ -68,20 +97,17 @@ Example output sections include:
 
 ## Use Your Own Mnemonic
 
-By default, `main.go` calls:
+You can pass a mnemonic without editing code by using flags. Either pass it directly:
 
-```go
-deriver, err := keyderivation.NewNostrKeyDeriver("")
+```bash
+go run ./examples/keyderivation --mnemonic "<your 12 or 24 words>"
 ```
 
-To reproduce the same keys between runs, replace the empty string with your own 12/24-word BIP-39 mnemonic:
+Or place it in a file and reference it:
 
-```go
-mnemonic := "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
-deriver, err := keyderivation.NewNostrKeyDeriver(mnemonic)
+```bash
+go run ./examples/keyderivation --mnemonic-file /path/to/mnemonic.txt
 ```
-
-Alternatively, you can safely hardcode it in a local copy while testing, or add an environment variable read (not provided by default) and pass it into `NewNostrKeyDeriver`.
 
 ## Safety Notes
 
