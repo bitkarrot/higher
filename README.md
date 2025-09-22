@@ -16,12 +16,6 @@ Additional features we added for production use:
    - added front page with relay and blossom information
 
 
-## Documentation
-
-- [HD Keys Implementation](./HD_KEYS.md)
-- [Access Control Flow](./ACCESS_CONTROL.md)
-
-
 ## Hierarchical Deterministic (HD) Keys in Higher Relay
 
 This relay implements Hierarchical Deterministic (HD) key authorization using BIP-32/BIP-44-style derivation. It validates incoming keys for event write/read and Blossom uploads against a configured HD master.
@@ -49,11 +43,13 @@ This relay implements Hierarchical Deterministic (HD) key authorization using BI
 - `DeriveKeyBIP32(index)` — derives a key pair at the path above
 - `GetMasterKeyPair()` — returns the root (master) key
 
+### See more at 
+- [HD Keys Implementation](./HD_KEYS.md)
+- [Access Control Flow](./ACCESS_CONTROL.md)
 
 ## Table of Contents
 
 - [Documentation](#documentation)
-- [Hierarchical Deterministic (HD) Keys in Higher Relay](#hierarchical-deterministic-hd-keys-in-higher-relay)
 - [Prerequisites](#prerequisites)
 - [Setting Environment Variables](#setting-environment-variables)
 - [Running Docker](#running-docker)
