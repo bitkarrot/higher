@@ -41,8 +41,7 @@ This relay implements Hierarchical Deterministic (HD) key authorization using BI
 
 ## Features
 
-Settings can be customized in [`.env`](./.env):
-
+Settings can be customized in [`.env.example`](./.env.example):
 - Specify Relay Master as Mnemonic or seed hex. Also can specify max derivation index.
 - Optional: Restrict Read to only derived keys
 - Optional: Team domain - to allow pubkeys in nostr.json
