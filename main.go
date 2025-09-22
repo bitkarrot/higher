@@ -667,43 +667,43 @@ type DBBackend interface {
 }
 
 func newDBBackend(path string) DBBackend {
-    // Default to Badger if DB_ENGINE is not set or empty
-    if config.DBEngine == nil || strings.TrimSpace(*config.DBEngine) == "" {
-        defaultEngine := "badger"
-        config.DBEngine = &defaultEngine
-    }
+	// Default to Badger if DB_ENGINE is not set or empty
+	if config.DBEngine == nil || strings.TrimSpace(*config.DBEngine) == "" {
+		defaultEngine := "badger"
+		config.DBEngine = &defaultEngine
+	}
 
-    // Log chosen engine for clarity
-    log.Printf("DB engine selected: %s", *config.DBEngine)
+	// Log chosen engine for clarity
+	log.Printf("DB engine selected: %s", *config.DBEngine)
 
-    switch strings.ToLower(strings.TrimSpace(*config.DBEngine)) {
-    case "lmdb":
-        return newLMDBBackend(path)
-    case "postgres":
-        return newPostgresBackend()
-    case "badger":
-        return &badger.BadgerBackend{Path: path}
-    default:
-        // Fallback to Badger for any unknown value
-        log.Printf("Unknown DB_ENGINE '%s', defaulting to badger", *config.DBEngine)
-        return &badger.BadgerBackend{Path: path}
-    }
+	switch strings.ToLower(strings.TrimSpace(*config.DBEngine)) {
+	case "lmdb":
+		return newLMDBBackend(path)
+	case "postgres":
+		return newPostgresBackend()
+	case "badger":
+		return &badger.BadgerBackend{Path: path}
+	default:
+		// Fallback to Badger for any unknown value
+		log.Printf("Unknown DB_ENGINE '%s', defaulting to badger", *config.DBEngine)
+		return &badger.BadgerBackend{Path: path}
+	}
 }
 
 func newPostgresBackend() DBBackend {
-    // Validate required Postgres settings to avoid nil pointer panics
-    if config.PostgresUser == nil || strings.TrimSpace(*config.PostgresUser) == "" ||
-        config.PostgresPassword == nil || strings.TrimSpace(*config.PostgresPassword) == "" ||
-        config.PostgresDB == nil || strings.TrimSpace(*config.PostgresDB) == "" ||
-        config.PostgresHost == nil || strings.TrimSpace(*config.PostgresHost) == "" ||
-        config.PostgresPort == nil || strings.TrimSpace(*config.PostgresPort) == "" {
-        log.Fatalf("Postgres selected but configuration is incomplete: ensure POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_HOST, POSTGRES_PORT are set")
-    }
+	// Validate required Postgres settings to avoid nil pointer panics
+	if config.PostgresUser == nil || strings.TrimSpace(*config.PostgresUser) == "" ||
+		config.PostgresPassword == nil || strings.TrimSpace(*config.PostgresPassword) == "" ||
+		config.PostgresDB == nil || strings.TrimSpace(*config.PostgresDB) == "" ||
+		config.PostgresHost == nil || strings.TrimSpace(*config.PostgresHost) == "" ||
+		config.PostgresPort == nil || strings.TrimSpace(*config.PostgresPort) == "" {
+		log.Fatalf("Postgres selected but configuration is incomplete: ensure POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB, POSTGRES_HOST, POSTGRES_PORT are set")
+	}
 
-    return &postgresql.PostgresBackend{
-        DatabaseURL: fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
-            *config.PostgresUser, *config.PostgresPassword, *config.PostgresHost, *config.PostgresPort, *config.PostgresDB),
-    }
+	return &postgresql.PostgresBackend{
+		DatabaseURL: fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+			*config.PostgresUser, *config.PostgresPassword, *config.PostgresHost, *config.PostgresPort, *config.PostgresDB),
+	}
 }
 
 // extractSha256FromURL extracts the SHA256 hash from a blossom URL
