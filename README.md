@@ -1,8 +1,6 @@
-# Higher: Nostr Relay for Hierarchical Determinstic (HD) Keys
+<img src="public/TeamHigher.jpg" alt="Higher Relay" align="right" width="180" />
 
-<p align="center">
-  <img src="public/TeamHigher.jpg" alt="Higher Relay" width="520" />
-</p>
+# Higher: Nostr Relay for Hierarchical Determinstic (HD) Keys
 
 This relay software specializes in providing a Nostr relay with access to keys derived from a master key. Any keys which are not derived from the master key will be rejected for write events. Optional: Allow nostr.json from a domain to allow additional keys to have read/write access to the relay. This Relay is based on the khatru library framework.
 
