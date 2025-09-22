@@ -16,8 +16,44 @@ Additional features we added for production use:
    - added front page with relay and blossom information
 
 
+## Documentation
+
+- [HD Keys Implementation](./HD_KEYS.md)
+- [Access Control Flow](./ACCESS_CONTROL.md)
+
+
+## Hierarchical Deterministic (HD) Keys in Higher Relay
+
+This relay implements Hierarchical Deterministic (HD) key authorization using BIP-32/BIP-44-style derivation. It validates incoming keys for event write/read and Blossom uploads against a configured HD master.
+
+**Key implementation files**
+- `keyderivation/hdkey.go`
+- `main.go` (authorization logic in `RejectEvent`, `RejectFilter`, and Blossom `RejectUpload`)
+
+**Master key configuration**
+- Exactly one of the following must be set in `.env` (validated in `LoadConfig()`):
+  - `RELAY_MNEMONIC` — BIP-39 mnemonic
+  - `RELAY_SEED_HEX` — hex-encoded 32-byte seed
+- The relay initializes the HD master in `initDeriver()` and keeps the deriver in a global `deriver` for access checks.
+
+**Derivation scheme**
+- Nostr BIP44 coin type `1237`, path: `m/44'/1237'/0'/0/index`
+  - `44'` — BIP44 purpose
+  - `1237'` — Nostr coin type
+  - `0'` — account 0
+  - `0` — external chain
+  - `index` — address index (non-hardened), starting at 0
+
+**Implemented in `keyderivation/hdkey.go`**
+- `NewNostrKeyDeriver(...)` — builds a deriver from mnemonic or seed
+- `DeriveKeyBIP32(index)` — derives a key pair at the path above
+- `GetMasterKeyPair()` — returns the root (master) key
+
+
 ## Table of Contents
 
+- [Documentation](#documentation)
+- [Hierarchical Deterministic (HD) Keys in Higher Relay](#hierarchical-deterministic-hd-keys-in-higher-relay)
 - [Prerequisites](#prerequisites)
 - [Setting Environment Variables](#setting-environment-variables)
 - [Running Docker](#running-docker)
