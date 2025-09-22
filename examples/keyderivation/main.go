@@ -21,6 +21,7 @@ func main() {
     simpleCount := flag.Uint("simple-count", 2, "Number of keys to derive with simple HMAC method")
     checkMax := flag.Uint("check-max", 100, "Max index to scan when checking key ownership")
     eventIndex := flag.Uint("event-index", 0, "Index to use when creating the sample Nostr event")
+    message := flag.String("message", "Hello Nostr! This message was signed with a derived key.", "Content for the sample Nostr event")
     flag.Parse()
 
     // Basic validation and sane minimums
@@ -118,7 +119,7 @@ func main() {
 
     // Create a sample Nostr event using go-nostr
     fmt.Println("\n5. Creating Nostr event with go-nostr...")
-    event, err := deriver.CreateNostrEvent(uint32(*eventIndex), "Hello Nostr! This message was signed with a derived key.")
+    event, err := deriver.CreateNostrEvent(uint32(*eventIndex), *message)
     if err != nil {
         log.Fatal("Failed to create event:", err)
     }

@@ -35,10 +35,13 @@ This relay implements Hierarchical Deterministic (HD) key authorization using BI
 - [HD Keys Implementation](./HD_KEYS.md)
 - [Access Control Flow](./ACCESS_CONTROL.md)
 
+## Examples
+
+- Key Derivation (Nostr HD Keys): see `examples/keyderivation/` — [README](./examples/keyderivation/README.md)
 
 ## Features
 
-Settings can be customized in .env:
+Settings can be customized in [`.env`](./.env):
 
 - Specify Relay Master as Mnemonic or seed hex. Also can specify max derivation index.
 - Optional: Restrict Read to only derived keys

@@ -56,6 +56,7 @@ The example now supports flags so you don't have to edit code to supply inputs:
 - `--simple-count` — Number of keys to derive with the simple HMAC method (default: 2).
 - `--check-max` — Max index to scan when checking key ownership (default: 100).
 - `--event-index` — Index used to sign the sample Nostr event (default: 0).
+ - `--message` — Content for the sample Nostr event (default: "Hello Nostr! This message was signed with a derived key.")
 
 Examples:
 
@@ -63,7 +64,8 @@ Examples:
 # Run with a specific mnemonic string
 go run ./examples/keyderivation \
   --mnemonic "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about" \
-  --start 0 --count 5 --simple-count 2 --check-max 200 --event-index 0
+  --start 0 --count 5 --simple-count 2 --check-max 200 --event-index 0 \
+  --message "Signing from index 0 with my custom message"
 
 # Run with a mnemonic from a file
 echo "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about" > /tmp/m.txt
