@@ -251,18 +251,28 @@ func main() {
 			return true, fmt.Sprintf("file size exceeds %dMB limit", config.MaxUploadSizeMB), 413
 		}
 
-		// If TEAM_DOMAIN is set, enforce team membership; otherwise, skip this check
+		// First allow if the event's pubkey is derived from the master key (when deriver is configured)
+		if deriver != nil {
+			belongs, _, err := deriver.CheckKeyBelongsToMaster(event.PubKey, uint32(config.MaxDerivationIndex), true)
+			if err != nil {
+				log.Printf("Error checking upload key against master: %v", err)
+			}
+			if belongs {
+				return false, ext, size
+			}
+		}
+
+		// Otherwise, if TEAM_DOMAIN is set, enforce team membership
 		if config.TeamDomain != "" {
 			for _, pubkey := range data.Names {
 				if pubkey == event.PubKey {
 					return false, ext, size
 				}
 			}
-
 			return true, "you are not part of the team", 403
 		}
 
-		// TEAM_DOMAIN is not set, allow upload (size already checked)
+		// TEAM_DOMAIN is not set and not derived from master: allow upload (size already checked)
 		return false, ext, size
 	})
 
