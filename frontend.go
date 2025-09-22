@@ -319,9 +319,11 @@ const frontPageTemplate = `<!DOCTYPE html>
         
         <div class="footer">
             <p>
+                 Built by <a href="https://nostr.at/npub18pudjhdhhp2v8gxnkttt00um729nv93tuepjda2jrwn3eua5tf5s80a699" target="_blank">@Bitkarrot</a> ❤️ |  
+                <a href="https://github.com/bitkarrot/higher" target="_blank">Source code</a> |
+                <a href="https://sendsats.to/bitkarrot@strike.me" target="_blank">Zap ⚡️</a> | 
                 Powered by <a href="https://khatru.nostr.technology/" target="_blank">Khatru</a> 
-                {{if .BlossomEnabled}}& <a href="https://khatru.nostr.technology/core/blossom" target="_blank">Blossom</a>{{end}}
-                | Built for the Nostr ecosystem
+                
             </p>
         </div>
     </div>

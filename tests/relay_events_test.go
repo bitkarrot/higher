@@ -53,6 +53,9 @@ func TestAccessControl_MasterAndTeam(t *testing.T) {
 		"RELAY_DESCRIPTION=Test Relay",
 	)
 
+	// Ensure previous relay on fixed port is fully closed
+	//	waitPortClosedWS(t, "ws://localhost:3334", 5*time.Second)
+
 	// Launch relay: go run . from project root
 	cmd := exec.Command("go", "run", ".")
 	cmd.Dir = filepath.Clean("..") // project root relative to tests/
