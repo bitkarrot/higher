@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bitkarrot/higher/keyderivation"
 	"github.com/fiatjaf/eventstore/badger"
 	"github.com/fiatjaf/eventstore/postgresql"
 	"github.com/fiatjaf/khatru"
@@ -22,7 +23,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/spf13/afero"
-	"github.com/bitkarrot/higher/keyderivation"
 )
 
 type Config struct {
@@ -44,8 +44,8 @@ type Config struct {
 	AllowedKinds     []int
 	MaxUploadSizeMB  int
 	// Key derivation / access control
-	RelayMnemonic     *string
-	RelaySeedHex      *string
+	RelayMnemonic      *string
+	RelaySeedHex       *string
 	MaxDerivationIndex int
 	ReadsRestricted    bool
 }
@@ -494,25 +494,25 @@ func LoadConfig() Config {
 	}
 
 	config := Config{
-		RelayName:        getEnv("RELAY_NAME"),
-		RelayPubkey:      getEnv("RELAY_PUBKEY"),
-		RelayDescription: getEnv("RELAY_DESCRIPTION"),
-		DBEngine:         getEnvNullable("DB_ENGINE"),
-		DBPath:           getEnvNullable("DB_PATH"),
-		PostgresUser:     getEnvNullable("POSTGRES_USER"),
-		PostgresPassword: getEnvNullable("POSTGRES_PASSWORD"),
-		PostgresDB:       getEnvNullable("POSTGRES_DB"),
-		PostgresHost:     getEnvNullable("POSTGRES_HOST"),
-		PostgresPort:     getEnvNullable("POSTGRES_PORT"),
-		TeamDomain:       getEnvWithDefault("TEAM_DOMAIN", ""),
-		BlossomEnabled:   getEnvBool("BLOSSOM_ENABLED"),
-		BlossomPath:      getEnvNullable("BLOSSOM_PATH"),
-		BlossomURL:       getEnvNullable("BLOSSOM_URL"),
-		WebsocketURL:     getEnvNullable("WEBSOCKET_URL"),
-		AllowedKinds:     parseAllowedKinds(getEnvNullable("ALLOWED_KINDS")),
-		MaxUploadSizeMB:  getEnvIntWithDefault("MAX_UPLOAD_SIZE_MB", 200),
-		RelayMnemonic:     getEnvNullable("RELAY_MNEMONIC"),
-		RelaySeedHex:      getEnvNullable("RELAY_SEED_HEX"),
+		RelayName:          getEnv("RELAY_NAME"),
+		RelayPubkey:        getEnv("RELAY_PUBKEY"),
+		RelayDescription:   getEnv("RELAY_DESCRIPTION"),
+		DBEngine:           getEnvNullable("DB_ENGINE"),
+		DBPath:             getEnvNullable("DB_PATH"),
+		PostgresUser:       getEnvNullable("POSTGRES_USER"),
+		PostgresPassword:   getEnvNullable("POSTGRES_PASSWORD"),
+		PostgresDB:         getEnvNullable("POSTGRES_DB"),
+		PostgresHost:       getEnvNullable("POSTGRES_HOST"),
+		PostgresPort:       getEnvNullable("POSTGRES_PORT"),
+		TeamDomain:         getEnvWithDefault("TEAM_DOMAIN", ""),
+		BlossomEnabled:     getEnvBool("BLOSSOM_ENABLED"),
+		BlossomPath:        getEnvNullable("BLOSSOM_PATH"),
+		BlossomURL:         getEnvNullable("BLOSSOM_URL"),
+		WebsocketURL:       getEnvNullable("WEBSOCKET_URL"),
+		AllowedKinds:       parseAllowedKinds(getEnvNullable("ALLOWED_KINDS")),
+		MaxUploadSizeMB:    getEnvIntWithDefault("MAX_UPLOAD_SIZE_MB", 200),
+		RelayMnemonic:      getEnvNullable("RELAY_MNEMONIC"),
+		RelaySeedHex:       getEnvNullable("RELAY_SEED_HEX"),
 		MaxDerivationIndex: getEnvIntWithDefault("MAX_DERIVATION_INDEX", 100),
 		ReadsRestricted:    getEnvBool("READS_RESTRICTED"),
 	}
@@ -550,33 +550,33 @@ func LoadConfig() Config {
 }
 
 func initDeriver(cfg Config) error {
-    // Initialize the global deriver based on mnemonic or seed hex
-    // Exactly one of these should be set by LoadConfig() validation
-    if cfg.RelayMnemonic != nil && strings.TrimSpace(*cfg.RelayMnemonic) != "" {
-        d, err := keyderivation.NewNostrKeyDeriver(strings.TrimSpace(*cfg.RelayMnemonic))
-        if err != nil {
-            return fmt.Errorf("failed to create deriver from mnemonic: %w", err)
-        }
-        deriver = d
-        return nil
-    }
+	// Initialize the global deriver based on mnemonic or seed hex
+	// Exactly one of these should be set by LoadConfig() validation
+	if cfg.RelayMnemonic != nil && strings.TrimSpace(*cfg.RelayMnemonic) != "" {
+		d, err := keyderivation.NewNostrKeyDeriver(strings.TrimSpace(*cfg.RelayMnemonic))
+		if err != nil {
+			return fmt.Errorf("failed to create deriver from mnemonic: %w", err)
+		}
+		deriver = d
+		return nil
+	}
 
-    if cfg.RelaySeedHex != nil && strings.TrimSpace(*cfg.RelaySeedHex) != "" {
-        seedBytes, err := hex.DecodeString(strings.TrimSpace(*cfg.RelaySeedHex))
-        if err != nil {
-            return fmt.Errorf("invalid RELAY_SEED_HEX: %w", err)
-        }
-        d, err := keyderivation.NewNostrKeyDeriverFromSeed(seedBytes)
-        if err != nil {
-            return fmt.Errorf("failed to create deriver from seed: %w", err)
-        }
-        deriver = d
-        return nil
-    }
+	if cfg.RelaySeedHex != nil && strings.TrimSpace(*cfg.RelaySeedHex) != "" {
+		seedBytes, err := hex.DecodeString(strings.TrimSpace(*cfg.RelaySeedHex))
+		if err != nil {
+			return fmt.Errorf("invalid RELAY_SEED_HEX: %w", err)
+		}
+		d, err := keyderivation.NewNostrKeyDeriverFromSeed(seedBytes)
+		if err != nil {
+			return fmt.Errorf("failed to create deriver from seed: %w", err)
+		}
+		deriver = d
+		return nil
+	}
 
-    // Neither provided: leave deriver nil (should not happen due to LoadConfig fatal)
-    deriver = nil
-    return nil
+	// Neither provided: leave deriver nil (should not happen due to LoadConfig fatal)
+	deriver = nil
+	return nil
 }
 
 func getEnv(key string) string {
@@ -673,14 +673,14 @@ func newDBBackend(path string) DBBackend {
 	}
 
 	switch *config.DBEngine {
-	case "lmdb":
-		return newLMDBBackend(path)
-	case "badger":
+	// case "lmdb":
+	// 	return newLMDBBackend(path)
+	case "postgres":
+		return newPostgresBackend()
+	default:
 		return &badger.BadgerBackend{
 			Path: path,
 		}
-	default:
-		return newPostgresBackend()
 	}
 }
 
