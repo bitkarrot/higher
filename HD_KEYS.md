@@ -44,7 +44,7 @@ This guarantees both the master and its descendants are recognized.
 ```mermaid
 flowchart TD
     %% belongs-to-master check
-    A[Input key (hex or npub)] --> B{Decode npub?}
+    A[Input key] --> B{Decode npub?}
     B -- Yes --> C[Extract hex pubkey]
     B -- No --> D[Use as hex]
     C --> E
