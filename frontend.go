@@ -227,6 +227,8 @@ const frontPageTemplate = `<!DOCTYPE html>
                 </div>
             </div>
             
+
+            {{if .HasTeamDomain}}
             <div class="endpoint">
                 <div class="endpoint-title">
                     <span class="method get">GET</span>
@@ -236,6 +238,7 @@ const frontPageTemplate = `<!DOCTYPE html>
                     Nostr relay information document (NIP-11) containing relay metadata and policies.
                 </div>
             </div>
+            {{end}}
         </div>
         
         {{if .BlossomEnabled}}
@@ -292,7 +295,7 @@ const frontPageTemplate = `<!DOCTYPE html>
             <div class="status-info">
                 <div class="status-item">
                     <div class="status-label">Team Domain</div>
-                    <div class="status-value">{{.TeamDomain}}</div>
+                    <div class="status-value">{{if .HasTeamDomain}}{{.TeamDomain}}{{else}}none{{end}}</div>
                 </div>
                 {{if .BlossomEnabled}}
                 <div class="status-item">
@@ -306,7 +309,9 @@ const frontPageTemplate = `<!DOCTYPE html>
                 {{end}}
                 <div class="status-item">
                     <div class="status-label">Access Control</div>
-                    <div class="status-value">Team Members Only</div>
+                    <div class="status-value">
+                        {{if .HasMasterKey}}Hierarchical Deterministic (HD) keys{{end}}{{if and .HasMasterKey .HasTeamDomain}}; {{end}}{{if .HasTeamDomain}}Team members only{{end}}
+                    </div>
                 </div>
                 {{if .AllowedKindsStr}}
                 <div class="status-item">
@@ -340,6 +345,8 @@ type FrontPageData struct {
 	AllowedKindsStr  string
 	WebSocketURL     string
 	WellKnownURL     string
+	HasMasterKey     bool
+	HasTeamDomain    bool
 }
 
 func setupFrontPageHandler(relay *khatru.Relay, config Config) {
@@ -372,6 +379,17 @@ func setupFrontPageHandler(relay *khatru.Relay, config Config) {
 			MaxUploadSizeMB:  config.MaxUploadSizeMB,
 			WebSocketURL:     wsURL,
 			WellKnownURL:     "https://" + config.TeamDomain + "/.well-known/nostr.json",
+		}
+
+		// Flags for conditional rendering
+		if config.RelayMnemonic != nil && strings.TrimSpace(*config.RelayMnemonic) != "" {
+			data.HasMasterKey = true
+		}
+		if config.RelaySeedHex != nil && strings.TrimSpace(*config.RelaySeedHex) != "" {
+			data.HasMasterKey = true
+		}
+		if strings.TrimSpace(config.TeamDomain) != "" {
+			data.HasTeamDomain = true
 		}
 
 		if config.BlossomURL != nil {
