@@ -1,6 +1,6 @@
 # Higher: Nostr Relay for Hierarchical determinstic keys
 
- This relay software specializes in providing a Nostr relay to keys derived from a master key. Any keys which are not derived from the master key will be rejected for write events. It is based of the khatru library framework.
+This relay software specializes in providing a Nostr relay with access to keys derived from a master key. Any keys which are not derived from the master key will be rejected for write events. Optional: Allow nostr.json from a domain to have read/write access to the relay. This Relay is based on the khatru library framework.
 
 In the .env file, the pubkey in the nostr.json located at the domain specified in the TEAM_DOMAIN variable is used to reject events from pubkeys that are not derived from the master pubkey.
 
