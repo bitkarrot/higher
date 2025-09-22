@@ -549,6 +549,36 @@ func LoadConfig() Config {
 	return config
 }
 
+func initDeriver(cfg Config) error {
+    // Initialize the global deriver based on mnemonic or seed hex
+    // Exactly one of these should be set by LoadConfig() validation
+    if cfg.RelayMnemonic != nil && strings.TrimSpace(*cfg.RelayMnemonic) != "" {
+        d, err := keyderivation.NewNostrKeyDeriver(strings.TrimSpace(*cfg.RelayMnemonic))
+        if err != nil {
+            return fmt.Errorf("failed to create deriver from mnemonic: %w", err)
+        }
+        deriver = d
+        return nil
+    }
+
+    if cfg.RelaySeedHex != nil && strings.TrimSpace(*cfg.RelaySeedHex) != "" {
+        seedBytes, err := hex.DecodeString(strings.TrimSpace(*cfg.RelaySeedHex))
+        if err != nil {
+            return fmt.Errorf("invalid RELAY_SEED_HEX: %w", err)
+        }
+        d, err := keyderivation.NewNostrKeyDeriverFromSeed(seedBytes)
+        if err != nil {
+            return fmt.Errorf("failed to create deriver from seed: %w", err)
+        }
+        deriver = d
+        return nil
+    }
+
+    // Neither provided: leave deriver nil (should not happen due to LoadConfig fatal)
+    deriver = nil
+    return nil
+}
+
 func getEnv(key string) string {
 	value, exists := os.LookupEnv(key)
 	if !exists {
