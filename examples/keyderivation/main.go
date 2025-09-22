@@ -19,6 +19,17 @@ func main() {
 
 	fmt.Printf("Mnemonic: %s\n", deriver.GetMnemonic())
 
+	// Show master (root) keypair for clarity
+	fmt.Println("\n1a. Master keypair (root derived from mnemonic/seed):")
+	masterKP, err := deriver.GetMasterKeyPair()
+	if err != nil {
+		log.Fatal("Failed to get master keypair:", err)
+	}
+	fmt.Printf("  Master Private (hex): %s\n", masterKP.PrivateKey)
+	fmt.Printf("  Master Public  (hex): %s\n", masterKP.PublicKey)
+	fmt.Printf("  Master Private (nsec): %s\n", masterKP.PrivateKeyNIP)
+	fmt.Printf("  Master Public  (npub): %s\n", masterKP.PublicKeyNIP)
+
 	// Derive keys using BIP32 with btcutil
 	fmt.Println("\n2. Deriving keys using BIP32 method with btcutil...")
 	keys, err := deriver.DeriveMultipleKeys(0, 3, true)

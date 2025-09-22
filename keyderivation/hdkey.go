@@ -24,6 +24,53 @@ type NostrKeyPair struct {
 	Index         uint32 `json:"index"`
 }
 
+// GetMasterKeyPair returns the master key (root) as a NostrKeyPair
+// This is the raw master private/public key derived from the BIP32 master extended key.
+func (nkd *NostrKeyDeriver) GetMasterKeyPair() (*NostrKeyPair, error) {
+    // Obtain EC private key from master extended key
+    privKey, err := nkd.masterKey.ECPrivKey()
+    if err != nil {
+        return nil, fmt.Errorf("failed to get master EC private key: %v", err)
+    }
+
+    // Serialize private key bytes
+    privKeyBytes := privKey.Serialize()
+    // Nostr expects 32-byte x-only pubkey; use compressed pubkey and drop prefix byte
+    pubKeyBytes := privKey.PubKey().SerializeCompressed()[1:]
+
+    // Hex encodings
+    privKeyHex := hex.EncodeToString(privKeyBytes)
+    pubKeyHex := hex.EncodeToString(pubKeyBytes)
+
+    // NIP-19 encodings
+    privKeyNIP, err := nip19.EncodePrivateKey(privKeyHex)
+    if err != nil {
+        return nil, fmt.Errorf("failed to encode master private key to NIP-19: %v", err)
+    }
+    pubKeyNIP, err := nip19.EncodePublicKey(pubKeyHex)
+    if err != nil {
+        return nil, fmt.Errorf("failed to encode master public key to NIP-19: %v", err)
+    }
+
+    return &NostrKeyPair{
+        PrivateKey:    privKeyHex,
+        PublicKey:     pubKeyHex,
+        PrivateKeyNIP: privKeyNIP,
+        PublicKeyNIP:  pubKeyNIP,
+        Index:         0,
+    }, nil
+}
+
+// GetMasterKeyPairNostr returns the master key pair in Nostr formats
+func (nkd *NostrKeyDeriver) GetMasterKeyPairNostr() (*NostrKeyPair, error) {
+    masterKeyPair, err := nkd.GetMasterKeyPair()
+    if err != nil {
+        return nil, err
+    }
+
+    return masterKeyPair, nil
+}
+
 // NostrKeyDeriver handles deterministic key derivation for Nostr
 type NostrKeyDeriver struct {
 	masterKey  *hdkeychain.ExtendedKey
