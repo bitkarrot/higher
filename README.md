@@ -2,20 +2,6 @@
 
 This relay software specializes in providing a Nostr relay with access to keys derived from a master key. Any keys which are not derived from the master key will be rejected for write events. Optional: Allow nostr.json from a domain to have read/write access to the relay. This Relay is based on the khatru library framework.
 
-In the .env file, the pubkey in the nostr.json located at the domain specified in the TEAM_DOMAIN variable is used to reject events from pubkeys that are not derived from the master pubkey.
-
-Additional features we added for production use:
-- Blossom
-   - added read and write timeouts
-   - prevent slow header attacks, max header size
-   - max size upload
-   - added /mirror endpoint to allow for syncing content with other relays
-   - added /list endpoint to allow for listing content for a specific user
-- Relay Kinds - add support to limit kinds allowed, kinds specified in .env file
-- Frontend
-   - added front page with relay and blossom information
-
-
 ## Hierarchical Deterministic (HD) Keys in Higher Relay
 
 This relay implements Hierarchical Deterministic (HD) key authorization using BIP-32/BIP-44-style derivation. It validates incoming keys for event write/read and Blossom uploads against a configured HD master.
@@ -46,6 +32,25 @@ This relay implements Hierarchical Deterministic (HD) key authorization using BI
 ### See more at 
 - [HD Keys Implementation](./HD_KEYS.md)
 - [Access Control Flow](./ACCESS_CONTROL.md)
+
+
+## Features
+
+Features we added for production use:
+
+- Specify Relay Master as Mnemonic or seed hex. Also can specify max derivation index.
+- Optional: Restrict Read to only derived keys
+- Optional: Team domain - to allow pubkeys in nostr.json
+- Blossom
+   - added read and write timeouts
+   - prevent slow header attacks, max header size
+   - max size upload
+   - added /mirror endpoint to allow for syncing content with other relays
+   - added /list endpoint to allow for listing content for a specific user
+- Relay Kinds - add support to limit kinds allowed, kinds specified in .env file
+- Frontend
+   - added front page with relay and blossom information
+
 
 ## Table of Contents
 
