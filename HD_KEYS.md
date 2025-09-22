@@ -51,8 +51,8 @@ flowchart TD
     D --> E
     E{Equal to master pubkey?}
     E -- Yes --> F[Return belongs=true]
-    E -- No --> G[For i in 0..MAX_DERIVATION_INDEX derive pubkey(i)]
-    G --> H{pubkey(i) == target?}
+    E -- No --> G[Loop over indices]
+    G --> H{Derived pubkey equals target?}
     H -- Yes --> F
     H -- No --> I{more i?}
     I -- Yes --> G
