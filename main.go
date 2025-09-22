@@ -514,7 +514,7 @@ func LoadConfig() Config {
 		PostgresDB:         getEnvNullable("POSTGRES_DB"),
 		PostgresHost:       getEnvNullable("POSTGRES_HOST"),
 		PostgresPort:       getEnvNullable("POSTGRES_PORT"),
-		TeamDomain:         getEnvWithDefault("TEAM_DOMAIN", ""),
+		TeamDomain:         getEnv("TEAM_DOMAIN"),
 		BlossomEnabled:     getEnvBool("BLOSSOM_ENABLED"),
 		BlossomPath:        getEnvNullable("BLOSSOM_PATH"),
 		BlossomURL:         getEnvNullable("BLOSSOM_URL"),
