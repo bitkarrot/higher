@@ -36,7 +36,7 @@ This relay implements Hierarchical Deterministic (HD) key authorization using BI
 
 ## Features
 
-Features we added for production use:
+Settings can be customized in .env:
 
 - Specify Relay Master as Mnemonic or seed hex. Also can specify max derivation index.
 - Optional: Restrict Read to only derived keys
@@ -54,7 +54,6 @@ Features we added for production use:
 
 ## Table of Contents
 
-- [Documentation](#documentation)
 - [Prerequisites](#prerequisites)
 - [Setting Environment Variables](#setting-environment-variables)
 - [Running Docker](#running-docker)
@@ -83,7 +82,7 @@ Features we added for production use:
     DB_ENGINE="lmdb" # lmdb, badger, postgres
     DB_PATH="db/" # only needed for lmdb, badger
 
-   # only needed for postgres
+   ### only needed for postgres
     POSTGRES_USER=higher
     POSTGRES_PASSWORD=password
     POSTGRES_DB=relay
