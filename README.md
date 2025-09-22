@@ -56,8 +56,6 @@ Settings can be customized in .env:
 
 - [Prerequisites](#prerequisites)
 - [Setting Environment Variables](#setting-environment-variables)
-- [Running Docker](#running-docker)
-- [Installing Go](#installing-go)
 - [Compiling the Application](#compiling-the-application)
 - [Running the Application as a Service](#running-the-application-as-a-service)
 
