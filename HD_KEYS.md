@@ -43,6 +43,7 @@ This guarantees both the master and its descendants are recognized.
 
 ```mermaid
 flowchart TD
+    %% belongs-to-master check
     A[Input key (hex or npub)] --> B{Decode npub?}
     B -- Yes --> C[Extract hex pubkey]
     B -- No --> D[Use as hex]
@@ -70,6 +71,7 @@ All authorization relies on `CheckKeyBelongsToMaster`. Additional team logic is 
 
 ```mermaid
 flowchart TD
+    %% event write policy
     A[Incoming event] --> B{Belongs to master?}
     B -- Yes --> C{Kind allowed?}
     C -- Yes --> D[Allow]
@@ -90,6 +92,7 @@ Enabled when `READS_RESTRICTED=true`.
 
 ```mermaid
 flowchart TD
+    %% read policy
     A[Incoming filter] --> B{READS_RESTRICTED?}
     B -- No --> C[Allow]
     B -- Yes --> D{Deriver configured?}
@@ -110,6 +113,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
+    %% blossom upload policy
     A[Upload request] --> S{Within size limit?}
     S -- No --> Z[Reject 413]
     S -- Yes --> B{Belongs to master?}
