@@ -387,7 +387,7 @@ func main() {
 
 		// Extract blob hash from source URL
 		blobHash := extractSha256FromURL(mirrorRequest.URL)
-		if blobHash == "" {
+		if blobHash == "" || !isValidSHA256Hex(blobHash) {
 			http.Error(w, "Cannot extract blob hash from source URL", http.StatusBadRequest)
 			return
 		}
@@ -416,7 +416,7 @@ func main() {
 		}
 
 		// Download blob from source URL
-		resp, err := mirrorHTTPClient.Get(mirrorRequest.URL)
+		resp, err := mirrorHTTPClient.Get(sourceURL.String())
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Failed to fetch source blob: %v", err), http.StatusBadGateway)
 			return
