@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -46,7 +48,7 @@ type Config struct {
 	// Key derivation / access control
 	RelayMnemonic      *string
 	RelaySeedHex       *string
-	MaxDerivationIndex int
+	MaxDerivationIndex uint32
 	ReadsRestricted    bool
 }
 
@@ -101,7 +103,7 @@ func main() {
 		// If we have a deriver and the event pubkey belongs to master, allow writes (subject to allowed kinds)
 		belongsToMaster := false
 		if deriver != nil {
-			b, _, err := deriver.CheckKeyBelongsToMaster(event.PubKey, uint32(config.MaxDerivationIndex), true)
+			b, _, err := deriver.CheckKeyBelongsToMaster(event.PubKey, config.MaxDerivationIndex, true)
 			if err != nil {
 				log.Printf("Error checking key against master: %v", err)
 			}
@@ -149,7 +151,7 @@ func main() {
 			// If authors are provided, ensure all are descendants of master
 			if len(filter.Authors) > 0 {
 				for _, a := range filter.Authors {
-					belongs, _, err := deriver.CheckKeyBelongsToMaster(a, uint32(config.MaxDerivationIndex), true)
+					belongs, _, err := deriver.CheckKeyBelongsToMaster(a, config.MaxDerivationIndex, true)
 					if err != nil {
 						return true, fmt.Sprintf("error validating author: %v", err)
 					}
@@ -231,6 +233,9 @@ func main() {
 	})
 
 	bl.LoadBlob = append(bl.LoadBlob, func(ctx context.Context, sha256 string) (io.ReadSeeker, error) {
+		if !isValidSHA256Hex(sha256) {
+			return nil, fmt.Errorf("invalid blob hash")
+		}
 		filePath := *config.BlossomPath + sha256
 		log.Printf("LoadBlob: Attempting to open file at path: %s", filePath)
 		file, err := fs.Open(filePath)
@@ -242,6 +247,9 @@ func main() {
 		return file, nil
 	})
 	bl.DeleteBlob = append(bl.DeleteBlob, func(ctx context.Context, sha256 string) error {
+		if !isValidSHA256Hex(sha256) {
+			return fmt.Errorf("invalid blob hash")
+		}
 		return fs.Remove(*config.BlossomPath + sha256)
 	})
 	bl.RejectUpload = append(bl.RejectUpload, func(ctx context.Context, event *nostr.Event, size int, ext string) (bool, string, int) {
@@ -253,7 +261,7 @@ func main() {
 
 		// First allow if the event's pubkey is derived from the master key (when deriver is configured)
 		if deriver != nil {
-			belongs, _, err := deriver.CheckKeyBelongsToMaster(event.PubKey, uint32(config.MaxDerivationIndex), true)
+			belongs, _, err := deriver.CheckKeyBelongsToMaster(event.PubKey, config.MaxDerivationIndex, true)
 			if err != nil {
 				log.Printf("Error checking upload key against master: %v", err)
 			}
@@ -397,8 +405,18 @@ func main() {
 			return
 		}
 
+		// Validate the source URL before fetching: only http/https URLs to
+		// public IP addresses are allowed, to prevent SSRF against internal
+		// services. Redirects are covered because the dialer validates the
+		// IPs of every connection it makes.
+		sourceURL, err := url.Parse(mirrorRequest.URL)
+		if err != nil || (sourceURL.Scheme != "http" && sourceURL.Scheme != "https") {
+			http.Error(w, "Source URL must be a valid http or https URL", http.StatusBadRequest)
+			return
+		}
+
 		// Download blob from source URL
-		resp, err := http.Get(mirrorRequest.URL)
+		resp, err := mirrorHTTPClient.Get(mirrorRequest.URL)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Failed to fetch source blob: %v", err), http.StatusBadGateway)
 			return
@@ -410,10 +428,16 @@ func main() {
 			return
 		}
 
-		// Read and verify the blob content
-		blobData, err := io.ReadAll(resp.Body)
+		// Read and verify the blob content, capping the size at the configured
+		// maximum upload size to avoid memory exhaustion from malicious servers
+		maxBytes := int64(config.MaxUploadSizeMB) * 1024 * 1024
+		blobData, err := io.ReadAll(io.LimitReader(resp.Body, maxBytes+1))
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Failed to read blob data: %v", err), http.StatusInternalServerError)
+			return
+		}
+		if int64(len(blobData)) > maxBytes {
+			http.Error(w, fmt.Sprintf("Blob exceeds %dMB size limit", config.MaxUploadSizeMB), http.StatusBadRequest)
 			return
 		}
 
@@ -523,7 +547,7 @@ func LoadConfig() Config {
 		MaxUploadSizeMB:    getEnvIntWithDefault("MAX_UPLOAD_SIZE_MB", 200),
 		RelayMnemonic:      getEnvNullable("RELAY_MNEMONIC"),
 		RelaySeedHex:       getEnvNullable("RELAY_SEED_HEX"),
-		MaxDerivationIndex: getEnvIntWithDefault("MAX_DERIVATION_INDEX", 100),
+		MaxDerivationIndex: getEnvUint32WithDefault("MAX_DERIVATION_INDEX", 100),
 		ReadsRestricted:    getEnvBool("READS_RESTRICTED"),
 	}
 
@@ -611,6 +635,18 @@ func getEnvNullable(key string) *string {
 		return nil
 	}
 	return &value
+}
+
+func getEnvUint32WithDefault(key string, defaultValue uint32) uint32 {
+	value, exists := os.LookupEnv(key)
+	if !exists {
+		return defaultValue
+	}
+	parsed, err := strconv.ParseUint(strings.TrimSpace(value), 10, 32)
+	if err != nil {
+		log.Fatalf("Environment variable %s must be a valid uint32 (0-%d), got %q", key, uint32(1<<32-1), value)
+	}
+	return uint32(parsed)
 }
 
 func getEnvIntWithDefault(key string, defaultValue int) int {
@@ -733,16 +769,89 @@ func extractSha256FromURL(url string) string {
 		hashPart = hashPart[:dotIndex]
 	}
 
-	// Validate that it looks like a SHA256 hash (64 hex characters)
-	if len(hashPart) == 64 {
-		// Check if all characters are valid hex
-		for _, char := range hashPart {
-			if !((char >= '0' && char <= '9') || (char >= 'a' && char <= 'f') || (char >= 'A' && char <= 'F')) {
-				return ""
-			}
-		}
+	if isValidSHA256Hex(hashPart) {
 		return strings.ToLower(hashPart)
 	}
 
 	return ""
+}
+
+// isValidSHA256Hex reports whether s is exactly 64 hexadecimal characters,
+// the canonical form of a blossom blob hash. Used to validate hashes before
+// they are concatenated into filesystem paths.
+func isValidSHA256Hex(s string) bool {
+	if len(s) != 64 {
+		return false
+	}
+	for _, char := range s {
+		if !((char >= '0' && char <= '9') || (char >= 'a' && char <= 'f') || (char >= 'A' && char <= 'F')) {
+			return false
+		}
+	}
+	return true
+}
+
+// isPublicIP reports whether ip is a globally routable address, i.e. not
+// loopback, private, link-local, multicast, CGNAT, or unspecified space.
+func isPublicIP(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
+		return false
+	}
+	// CGNAT range 100.64.0.0/10 is not covered by the checks above
+	if ip4 := ip.To4(); ip4 != nil && ip4[0] == 100 && ip4[1] >= 64 && ip4[1] < 128 {
+		return false
+	}
+	return true
+}
+
+// publicIPDialContext resolves the host itself, rejects any hostname that has
+// no public IP addresses, and dials the validated IPs directly. Because the
+// validation happens at connection time, it also applies to redirect targets.
+func publicIPDialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, err
+	}
+	ips, err := net.DefaultResolver.LookupIP(ctx, "ip", host)
+	if err != nil {
+		return nil, fmt.Errorf("cannot resolve host %q: %w", host, err)
+	}
+	dialer := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
+	hasPublic := false
+	var dialErr error
+	for _, ip := range ips {
+		if !isPublicIP(ip) {
+			continue
+		}
+		hasPublic = true
+		conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
+		if err == nil {
+			return conn, nil
+		}
+		dialErr = err
+	}
+	if !hasPublic {
+		return nil, fmt.Errorf("host %q resolves only to non-public IP addresses", host)
+	}
+	return nil, dialErr
+}
+
+// mirrorHTTPClient is used exclusively for fetching blobs from user-supplied
+// mirror URLs. It validates destination IPs at dial time (SSRF protection),
+// applies an overall timeout, and since the dial check runs per connection,
+// redirect targets are validated as well.
+var mirrorHTTPClient = &http.Client{
+	Timeout: 60 * time.Second,
+	Transport: &http.Transport{
+		DialContext:           publicIPDialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          10,
+		IdleConnTimeout:       30 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 30 * time.Second,
+	},
 }
